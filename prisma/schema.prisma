@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ============================================================================
@@ -26,7 +26,7 @@ model Project {
   name            String
   targetDomain    String
   location        String           @default("us")
-  device          Device           @default(desktop)
+  device          String           @default("desktop")
   crawlLimit      Int              @default(500)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -41,11 +41,6 @@ model Competitor {
   project   Project @relation(fields: [projectId], references: [id])
   domain    String
   position  Int
-}
-
-enum Device {
-  desktop
-  mobile
 }
 
 // ============================================================================
@@ -66,9 +61,9 @@ model Domain {
   industry         Industry?     @relation(fields: [industryId], references: [id])
   authorityScore   Int           @default(0)
   organicKeywords  Int           @default(0)
-  organicTraffic   BigInt        @default(0)
+  organicTraffic   Int           @default(0)
   paidKeywords     Int           @default(0)
-  backlinksTotal   BigInt        @default(0)
+  backlinksTotal   Int           @default(0)
   referringDomains Int           @default(0)
   updatedAt        DateTime      @updatedAt
   organicRanks     OrganicRank[]
@@ -90,11 +85,11 @@ model Keyword {
   keyword         String
   country         String           @default("us")
   volume          Int              @default(0)
-  cpc             Decimal          @default(0) @db.Decimal(10, 2)
+  cpc             Float            @default(0)
   difficulty      Int              @default(0)
-  intent          Intent           @default(informational)
-  serpFeatures    Json?
-  trend           Json?
+  intent          String           @default("informational")
+  serpFeatures    String?
+  trend           String?
   groupId         String?
   group           KeywordGroup?    @relation(fields: [groupId], references: [id])
   updatedAt       DateTime         @updatedAt
@@ -102,13 +97,6 @@ model Keyword {
   trackedKeywords TrackedKeyword[]
 
   @@unique([keyword, country])
-}
-
-enum Intent {
-  informational
-  navigational
-  commercial
-  transactional
 }
 
 model OrganicRank {
@@ -119,7 +107,7 @@ model OrganicRank {
   keyword          Keyword  @relation(fields: [keywordId], references: [id])
   position         Int
   url              String
-  trafficPercent   Decimal? @db.Decimal(5, 2)
+  trafficPercent   Float?
   previousPosition Int?
   updatedAt        DateTime @updatedAt
 
@@ -147,8 +135,8 @@ model Backlink {
   isLost         Boolean  @default(false)
   toxicityScore  Int      @default(0)
 
-  @@index([targetDomainId, firstSeen(sort: Desc)])
-  @@index([toxicityScore(sort: Desc)])
+  @@index([targetDomainId])
+  @@index([toxicityScore])
 }
 
 // ============================================================================
@@ -170,15 +158,14 @@ model AuditUrl {
   crawledAt     DateTime     @default(now())
   issues        AuditIssue[]
 
-  @@index([projectId, url])
-  @@index([projectId, statusCode])
+  @@index([projectId])
 }
 
 model IssueType {
   id              String       @id @default(cuid())
   code            String       @unique
   name            String
-  severity        Severity
+  severity        String
   category        String
   description     String?
   fixInstructions String?
@@ -191,16 +178,10 @@ model AuditIssue {
   auditUrl    AuditUrl  @relation(fields: [auditUrlId], references: [id])
   issueTypeId String
   issueType   IssueType @relation(fields: [issueTypeId], references: [id])
-  details     Json?
+  details     String?
   createdAt   DateTime  @default(now())
 
   @@index([issueTypeId])
-}
-
-enum Severity {
-  error
-  warning
-  notice
 }
 
 // ============================================================================
@@ -213,7 +194,7 @@ model TrackedKeyword {
   project     Project       @relation(fields: [projectId], references: [id])
   keywordId   String
   keyword     Keyword       @relation(fields: [keywordId], references: [id])
-  tags        Json?
+  tags        String?
   createdAt   DateTime      @default(now())
   rankHistory RankHistory[]
 
@@ -224,14 +205,14 @@ model RankHistory {
   id               String         @id @default(cuid())
   trackedKeywordId String
   trackedKeyword   TrackedKeyword @relation(fields: [trackedKeywordId], references: [id])
-  date             DateTime       @db.Date
+  date             DateTime
   position         Int?
   url              String?
-  visibility       Decimal?       @db.Decimal(5, 2)
+  visibility       Float?
   estimatedTraffic Int?
 
   @@unique([trackedKeywordId, date])
-  @@index([trackedKeywordId, date(sort: Desc)])
+  @@index([trackedKeywordId])
 }
 
 // ============================================================================
@@ -239,27 +220,21 @@ model RankHistory {
 // ============================================================================
 
 model SavedList {
-  id        String         @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  type      SavedListType
-  items     Json
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-}
-
-enum SavedListType {
-  keywords
-  domains
-  backlinks
+  type      String
+  items     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Report {
-  id          String       @id @default(cuid())
-  name        String
-  template    String
-  config      Json
-  scheduleAt  DateTime?
-  lastRunAt   DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id         String    @id @default(cuid())
+  name       String
+  template   String
+  config     String
+  scheduleAt DateTime?
+  lastRunAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }

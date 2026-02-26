@@ -74,4 +74,52 @@ This single source of truth is used by Sidebar for nav rendering and by the page
 
 ## Phase 4: Data Model + Seed
 
-(To be documented)
+### Decision 6: SQLite for Development
+**Date:** 2025-02-26
+**Status:** Temporary
+
+Switched from PostgreSQL to SQLite for development to remove Docker dependency. The schema was modified to remove PostgreSQL-specific features:
+- `BigInt` → `Int`
+- `@db.Decimal` → `Float`
+- `@db.Date` → `DateTime`
+- Enums → String (SQLite doesn't support enums natively)
+
+**Rationale:** Allows rapid development without infrastructure setup. Production will use PostgreSQL.
+
+### Decision 7: Seed Data Scale
+**Date:** 2025-02-26
+**Status:** Adopted
+
+Created comprehensive seed with:
+- 10 industries with realistic category names
+- 485 domains (50 per industry, some duplicates filtered)
+- 18,600 keywords with industry-specific templates
+- 240,489 backlinks with realistic anchor texts
+- 100,798 audit URLs across 10 projects
+- 29,943 audit issues
+- 2,483 tracked keywords with 225,953 rank history records (90 days each)
+
+**Rationale:** Sufficient scale to test performance with realistic data volumes while keeping seed time reasonable (~5 min).
+
+### Decision 8: Keyword Generation Strategy
+**Date:** 2025-02-26
+**Status:** Adopted
+
+Keywords generated using templates per industry:
+- Base words mapped to each industry (e.g., "tech", "software" for technology)
+- Templates like "best {base} software", "{base} pricing", etc.
+- Year variants for uniqueness (e.g., "best tech 2024", "best tech 2025")
+
+This creates semantically coherent keyword groups that make sense for each industry.
+
+### Decision 9: Rank History Simulation
+**Date:** 2025-02-26
+**Status:** Adopted
+
+Rank history simulates realistic position fluctuation:
+- Starting position: random 1-50
+- Daily change: random -3 to +3
+- Clamped to 1-100 range
+- 91 days of history per tracked keyword
+
+This creates believable trend patterns for visualization.
