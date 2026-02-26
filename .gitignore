@@ -38,3 +38,4 @@ test-results/
 # prisma
 prisma/*.db
 prisma/*.db-journal
+prisma/dev.db
