@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// CORE ENTITIES
+// ============================================================================
+
+model Workspace {
+  id        String    @id @default(cuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+}
+
+model Project {
+  id              String           @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id])
+  name            String
+  targetDomain    String
+  location        String           @default("us")
+  device          Device           @default(desktop)
+  crawlLimit      Int              @default(500)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  competitors     Competitor[]
+  trackedKeywords TrackedKeyword[]
+  auditUrls       AuditUrl[]
+}
+
+model Competitor {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+  domain    String
+  position  Int
+}
+
+enum Device {
+  desktop
+  mobile
+}
+
+// ============================================================================
+// DOMAIN & KEYWORD DATA
+// ============================================================================
+
+model Industry {
+  id      String   @id @default(cuid())
+  name    String
+  slug    String   @unique
+  domains Domain[]
+}
+
+model Domain {
+  id               String        @id @default(cuid())
+  domain           String        @unique
+  industryId       String?
+  industry         Industry?     @relation(fields: [industryId], references: [id])
+  authorityScore   Int           @default(0)
+  organicKeywords  Int           @default(0)
+  organicTraffic   BigInt        @default(0)
+  paidKeywords     Int           @default(0)
+  backlinksTotal   BigInt        @default(0)
+  referringDomains Int           @default(0)
+  updatedAt        DateTime      @updatedAt
+  organicRanks     OrganicRank[]
+  backlinks        Backlink[]
+}
+
+model KeywordGroup {
+  id           String         @id @default(cuid())
+  name         String
+  parentId     String?
+  parent       KeywordGroup?  @relation("GroupHierarchy", fields: [parentId], references: [id])
+  children     KeywordGroup[] @relation("GroupHierarchy")
+  keywordCount Int            @default(0)
+  keywords     Keyword[]
+}
+
+model Keyword {
+  id              String           @id @default(cuid())
+  keyword         String
+  country         String           @default("us")
+  volume          Int              @default(0)
+  cpc             Decimal          @default(0) @db.Decimal(10, 2)
+  difficulty      Int              @default(0)
+  intent          Intent           @default(informational)
+  serpFeatures    Json?
+  trend           Json?
+  groupId         String?
+  group           KeywordGroup?    @relation(fields: [groupId], references: [id])
+  updatedAt       DateTime         @updatedAt
+  organicRanks    OrganicRank[]
+  trackedKeywords TrackedKeyword[]
+
+  @@unique([keyword, country])
+}
+
+enum Intent {
+  informational
+  navigational
+  commercial
+  transactional
+}
+
+model OrganicRank {
+  id               String   @id @default(cuid())
+  domainId         String
+  domain           Domain   @relation(fields: [domainId], references: [id])
+  keywordId        String
+  keyword          Keyword  @relation(fields: [keywordId], references: [id])
+  position         Int
+  url              String
+  trafficPercent   Decimal? @db.Decimal(5, 2)
+  previousPosition Int?
+  updatedAt        DateTime @updatedAt
+
+  @@unique([domainId, keywordId])
+  @@index([domainId, position])
+}
+
+// ============================================================================
+// BACKLINK DATA
+// ============================================================================
+
+model Backlink {
+  id             String   @id @default(cuid())
+  targetDomainId String
+  targetDomain   Domain   @relation(fields: [targetDomainId], references: [id])
+  sourceDomain   String
+  sourceUrl      String
+  targetUrl      String
+  anchor         String?
+  isDofollow     Boolean  @default(true)
+  isImage        Boolean  @default(false)
+  authorityScore Int      @default(0)
+  firstSeen      DateTime
+  lastSeen       DateTime
+  isLost         Boolean  @default(false)
+  toxicityScore  Int      @default(0)
+
+  @@index([targetDomainId, firstSeen(sort: Desc)])
+  @@index([toxicityScore(sort: Desc)])
+}
+
+// ============================================================================
+// SITE AUDIT DATA
+// ============================================================================
+
+model AuditUrl {
+  id            String       @id @default(cuid())
+  projectId     String
+  project       Project      @relation(fields: [projectId], references: [id])
+  url           String
+  statusCode    Int?
+  contentType   String?
+  wordCount     Int?
+  loadTimeMs    Int?
+  crawlDepth    Int?
+  internalLinks Int?
+  externalLinks Int?
+  crawledAt     DateTime     @default(now())
+  issues        AuditIssue[]
+
+  @@index([projectId, url])
+  @@index([projectId, statusCode])
+}
+
+model IssueType {
+  id              String       @id @default(cuid())
+  code            String       @unique
+  name            String
+  severity        Severity
+  category        String
+  description     String?
+  fixInstructions String?
+  issues          AuditIssue[]
+}
+
+model AuditIssue {
+  id          String    @id @default(cuid())
+  auditUrlId  String
+  auditUrl    AuditUrl  @relation(fields: [auditUrlId], references: [id])
+  issueTypeId String
+  issueType   IssueType @relation(fields: [issueTypeId], references: [id])
+  details     Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([issueTypeId])
+}
+
+enum Severity {
+  error
+  warning
+  notice
+}
+
+// ============================================================================
+// POSITION TRACKING
+// ============================================================================
+
+model TrackedKeyword {
+  id          String        @id @default(cuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id])
+  keywordId   String
+  keyword     Keyword       @relation(fields: [keywordId], references: [id])
+  tags        Json?
+  createdAt   DateTime      @default(now())
+  rankHistory RankHistory[]
+
+  @@unique([projectId, keywordId])
+}
+
+model RankHistory {
+  id               String         @id @default(cuid())
+  trackedKeywordId String
+  trackedKeyword   TrackedKeyword @relation(fields: [trackedKeywordId], references: [id])
+  date             DateTime       @db.Date
+  position         Int?
+  url              String?
+  visibility       Decimal?       @db.Decimal(5, 2)
+  estimatedTraffic Int?
+
+  @@unique([trackedKeywordId, date])
+  @@index([trackedKeywordId, date(sort: Desc)])
+}
+
+// ============================================================================
+// REPORTS & USER DATA
+// ============================================================================
+
+model SavedList {
+  id        String         @id @default(cuid())
+  name      String
+  type      SavedListType
+  items     Json
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+enum SavedListType {
+  keywords
+  domains
+  backlinks
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  name        String
+  template    String
+  config      Json
+  scheduleAt  DateTime?
+  lastRunAt   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
