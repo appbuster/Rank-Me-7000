@@ -14,6 +14,9 @@ import {
   Bar,
   AreaChart,
   Area,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts'
 
 export interface ChartDataPoint {
@@ -25,7 +28,7 @@ interface ChartContainerProps {
   title: string
   subtitle?: string
   data: ChartDataPoint[]
-  type?: 'line' | 'bar' | 'area'
+  type?: 'line' | 'bar' | 'area' | 'pie'
   dataKeys: { key: string; color: string; name?: string }[]
   height?: number
   className?: string
@@ -47,6 +50,35 @@ export function ChartContainer({
     }
 
     switch (type) {
+      case 'pie': {
+        const COLORS = data.map((d) => (d as { color?: string }).color || '#3b82f6')
+        return (
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey={dataKeys[0]?.key || 'value'}
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={100}
+              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            >
+              {data.map((_, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#fff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+              }}
+            />
+            <Legend />
+          </PieChart>
+        )
+      }
+
       case 'bar':
         return (
           <BarChart {...commonProps}>
