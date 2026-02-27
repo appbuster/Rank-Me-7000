@@ -238,3 +238,252 @@ model Report {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 }
+
+// ============================================================================
+// CONTENT TOOLKIT
+// ============================================================================
+
+model TopicIdea {
+  id              String   @id @default(cuid())
+  topic           String
+  keyword         String
+  volume          Int      @default(0)
+  difficulty      Int      @default(0)
+  trendScore      Int      @default(50)
+  questions       String?
+  relatedTopics   String?
+  contentType     String   @default("blog")
+  createdAt       DateTime @default(now())
+}
+
+model ContentPiece {
+  id            String   @id @default(cuid())
+  url           String
+  title         String
+  wordCount     Int      @default(0)
+  readingTime   Int      @default(0)
+  seoScore      Int      @default(0)
+  readability   Int      @default(0)
+  targetKeyword String?
+  lastUpdated   DateTime
+  status        String   @default("published")
+  issues        String?
+  createdAt     DateTime @default(now())
+}
+
+// ============================================================================
+// LOCAL TOOLKIT
+// ============================================================================
+
+model LocalListing {
+  id           String   @id @default(cuid())
+  businessName String
+  platform     String
+  profileUrl   String?
+  status       String   @default("active")
+  nap          String?
+  categories   String?
+  rating       Float?
+  reviewCount  Int      @default(0)
+  isVerified   Boolean  @default(false)
+  lastSynced   DateTime
+  issues       String?
+}
+
+model Review {
+  id           String   @id @default(cuid())
+  listingId    String
+  platform     String
+  authorName   String
+  rating       Int
+  content      String?
+  sentiment    String   @default("neutral")
+  isResponded  Boolean  @default(false)
+  response     String?
+  publishedAt  DateTime
+  respondedAt  DateTime?
+}
+
+model MapRanking {
+  id        String   @id @default(cuid())
+  keyword   String
+  location  String
+  gridSize  Int      @default(5)
+  positions String
+  avgRank   Float
+  topRank   Int
+  date      DateTime @default(now())
+}
+
+// ============================================================================
+// SOCIAL TOOLKIT
+// ============================================================================
+
+model SocialProfile {
+  id           String         @id @default(cuid())
+  platform     String
+  handle       String
+  displayName  String?
+  followers    Int            @default(0)
+  following    Int            @default(0)
+  postCount    Int            @default(0)
+  engagementRate Float        @default(0)
+  profileUrl   String?
+  avatarUrl    String?
+  isVerified   Boolean        @default(false)
+  lastUpdated  DateTime       @updatedAt
+  posts        SocialPost[]
+  metrics      SocialMetric[]
+
+  @@unique([platform, handle])
+}
+
+model SocialPost {
+  id          String        @id @default(cuid())
+  profileId   String
+  profile     SocialProfile @relation(fields: [profileId], references: [id])
+  platform    String
+  postId      String
+  content     String?
+  postType    String        @default("text")
+  likes       Int           @default(0)
+  comments    Int           @default(0)
+  shares      Int           @default(0)
+  impressions Int           @default(0)
+  reach       Int           @default(0)
+  publishedAt DateTime
+  url         String?
+
+  @@unique([platform, postId])
+}
+
+model SocialMetric {
+  id              String        @id @default(cuid())
+  profileId       String
+  profile         SocialProfile @relation(fields: [profileId], references: [id])
+  date            DateTime
+  followers       Int           @default(0)
+  followersChange Int           @default(0)
+  impressions     Int           @default(0)
+  engagements     Int           @default(0)
+  reach           Int           @default(0)
+
+  @@unique([profileId, date])
+}
+
+// ============================================================================
+// ADVERTISING TOOLKIT
+// ============================================================================
+
+model PpcKeyword {
+  id            String   @id @default(cuid())
+  keyword       String
+  volume        Int      @default(0)
+  cpc           Float    @default(0)
+  competition   Float    @default(0)
+  competitorAds Int      @default(0)
+  trend         String?
+  lastSeen      DateTime
+  adCopies      String?
+}
+
+model AdCampaign {
+  id           String      @id @default(cuid())
+  domain       String
+  platform     String
+  campaignType String
+  budget       Float?
+  startDate    DateTime
+  endDate      DateTime?
+  status       String      @default("active")
+  impressions  Int         @default(0)
+  clicks       Int         @default(0)
+  conversions  Int         @default(0)
+  spend        Float       @default(0)
+  ads          AdCreative[]
+}
+
+model AdCreative {
+  id          String     @id @default(cuid())
+  campaignId  String
+  campaign    AdCampaign @relation(fields: [campaignId], references: [id])
+  headline    String
+  description String?
+  displayUrl  String?
+  finalUrl    String?
+  imageUrl    String?
+  format      String     @default("text")
+  impressions Int        @default(0)
+  clicks      Int        @default(0)
+  ctr         Float      @default(0)
+  firstSeen   DateTime
+  lastSeen    DateTime
+}
+
+// ============================================================================
+// TRAFFIC & MARKET
+// ============================================================================
+
+model TrafficData {
+  id             String   @id @default(cuid())
+  domain         String
+  date           DateTime
+  visits         Int      @default(0)
+  pageViews      Int      @default(0)
+  bounceRate     Float    @default(0)
+  avgDuration    Int      @default(0)
+  pagesPerVisit  Float    @default(0)
+  directTraffic  Float    @default(0)
+  searchTraffic  Float    @default(0)
+  socialTraffic  Float    @default(0)
+  referralTraffic Float   @default(0)
+  paidTraffic    Float    @default(0)
+
+  @@unique([domain, date])
+}
+
+model MarketData {
+  id           String   @id @default(cuid())
+  industrySlug String
+  domain       String
+  marketShare  Float    @default(0)
+  traffic      Int      @default(0)
+  growthRate   Float    @default(0)
+  date         DateTime
+
+  @@unique([industrySlug, domain, date])
+}
+
+// ============================================================================
+// AI VISIBILITY & PR
+// ============================================================================
+
+model AIMention {
+  id           String   @id @default(cuid())
+  brand        String
+  aiPlatform   String
+  query        String
+  mentioned    Boolean
+  position     Int?
+  sentiment    String   @default("neutral")
+  context      String?
+  competitors  String?
+  checkedAt    DateTime @default(now())
+}
+
+model AIPrCampaign {
+  id            String   @id @default(cuid())
+  name          String
+  brand         String
+  status        String   @default("draft")
+  targetAudience String?
+  keyMessages   String?
+  mediaOutlets  String?
+  pitchTemplate String?
+  sentCount     Int      @default(0)
+  openCount     Int      @default(0)
+  replyCount    Int      @default(0)
+  placementCount Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

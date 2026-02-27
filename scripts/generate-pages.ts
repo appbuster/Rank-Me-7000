@@ -41,7 +41,7 @@ async function main() {
   console.log(`Generating ${Object.keys(routes).length} pages...`)
 
   let created = 0
-  let skipped = 0
+  const skipped = 0
 
   for (const [key, route] of Object.entries(routes)) {
     const pagePath = getPagePath(route.path)

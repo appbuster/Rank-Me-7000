@@ -254,7 +254,7 @@ async function main() {
 
   // Create keywords (25,000+)
   console.log('🔑 Creating 25,000+ keywords...')
-  const keywords: { id: string; keyword: string; volume: number }[] = []
+  const keywords: { id: string; keyword: string; volume: number; cpc: number }[] = []
   const intents = ['informational', 'navigational', 'commercial', 'transactional']
   
   let keywordCount = 0
@@ -281,7 +281,7 @@ async function main() {
                 groupId: group?.id,
               },
             })
-            keywords.push({ id: created.id, keyword: created.keyword, volume: created.volume })
+            keywords.push({ id: created.id, keyword: created.keyword, volume: created.volume, cpc: created.cpc })
             keywordCount++
           } catch {
             // Skip duplicates
@@ -512,6 +512,384 @@ async function main() {
       { name: 'Ranking Progress', template: 'rankings', config: '{}' },
     ],
   })
+
+  // ============================================================================
+  // PHASE 7: ADDITIONAL TOOLKIT DATA
+  // ============================================================================
+
+  // Content Toolkit - Topic Ideas
+  console.log('📝 Creating content toolkit data...')
+  const topicIdeas = []
+  const contentTypes = ['blog', 'guide', 'listicle', 'comparison', 'how-to', 'review']
+  const topicPrefixes = ['Ultimate Guide to', 'How to', 'Best', 'Top 10', 'Why', 'What is']
+  
+  for (let i = 0; i < 200; i++) {
+    const kw = randomChoice(keywords)
+    topicIdeas.push({
+      topic: `${randomChoice(topicPrefixes)} ${kw.keyword}`,
+      keyword: kw.keyword,
+      volume: kw.volume,
+      difficulty: randomInt(20, 80),
+      trendScore: randomInt(30, 100),
+      questions: JSON.stringify([
+        `What is ${kw.keyword}?`,
+        `How does ${kw.keyword} work?`,
+        `Is ${kw.keyword} worth it?`,
+      ]),
+      relatedTopics: JSON.stringify([`${kw.keyword} tips`, `${kw.keyword} guide`, `${kw.keyword} alternatives`]),
+      contentType: randomChoice(contentTypes),
+    })
+  }
+  await prisma.topicIdea.createMany({ data: topicIdeas })
+  console.log(`   Created ${topicIdeas.length} topic ideas`)
+
+  // Content Pieces
+  const contentPieces = []
+  const contentStatuses = ['published', 'draft', 'needs-update', 'archived']
+  
+  for (const domain of domains.slice(0, 50)) {
+    for (let i = 0; i < randomInt(5, 20); i++) {
+      const kw = randomChoice(keywords)
+      contentPieces.push({
+        url: generateUrl(domain.domain, 2),
+        title: `${randomChoice(topicPrefixes)} ${kw.keyword}`,
+        wordCount: randomInt(500, 3000),
+        readingTime: randomInt(2, 15),
+        seoScore: randomInt(40, 95),
+        readability: randomInt(50, 90),
+        targetKeyword: kw.keyword,
+        lastUpdated: daysAgo(randomInt(1, 180)),
+        status: randomChoice(contentStatuses),
+        issues: randomInt(0, 5) > 2 ? JSON.stringify(['Missing meta description', 'Low word count']) : null,
+      })
+    }
+  }
+  await prisma.contentPiece.createMany({ data: contentPieces })
+  console.log(`   Created ${contentPieces.length} content pieces`)
+
+  // Local Toolkit - Listings
+  console.log('📍 Creating local toolkit data...')
+  const platforms = ['Google Business', 'Yelp', 'Facebook', 'Apple Maps', 'Bing Places', 'TripAdvisor']
+  const listingStatuses = ['active', 'pending', 'inactive', 'duplicate']
+  const localListings = []
+  
+  for (let i = 0; i < 100; i++) {
+    const domain = randomChoice(domains)
+    localListings.push({
+      businessName: domain.domain.split('.')[0].replace(/\d+/g, '').toUpperCase() + ' Business',
+      platform: randomChoice(platforms),
+      profileUrl: `https://${randomChoice(platforms).toLowerCase().replace(' ', '')}.com/${domain.domain}`,
+      status: randomChoice(listingStatuses),
+      nap: JSON.stringify({
+        name: domain.domain.split('.')[0],
+        address: `${randomInt(100, 9999)} Main St, City, ST ${randomInt(10000, 99999)}`,
+        phone: `(${randomInt(200, 999)}) ${randomInt(200, 999)}-${randomInt(1000, 9999)}`,
+      }),
+      categories: JSON.stringify(['Business', 'Services', 'Local']),
+      rating: randomFloat(2.5, 5.0, 1),
+      reviewCount: randomInt(5, 500),
+      isVerified: Math.random() > 0.3,
+      lastSynced: daysAgo(randomInt(0, 30)),
+      issues: randomInt(0, 5) > 3 ? JSON.stringify(['NAP inconsistency', 'Missing hours']) : null,
+    })
+  }
+  await prisma.localListing.createMany({ data: localListings })
+  console.log(`   Created ${localListings.length} local listings`)
+
+  // Reviews
+  const reviews = []
+  const sentiments = ['positive', 'neutral', 'negative']
+  const reviewTemplates = [
+    'Great service! Highly recommend.',
+    'Average experience, nothing special.',
+    'Not satisfied with the service.',
+    'Amazing quality and fast delivery!',
+    'Could be better, but okay overall.',
+    'Terrible experience, would not recommend.',
+    'Five stars! Will come back again.',
+    'Professional and friendly staff.',
+  ]
+  
+  for (let i = 0; i < 500; i++) {
+    const rating = randomInt(1, 5)
+    reviews.push({
+      listingId: `listing-${i % 100}`,
+      platform: randomChoice(platforms),
+      authorName: `User${randomInt(1000, 9999)}`,
+      rating,
+      content: randomChoice(reviewTemplates),
+      sentiment: rating >= 4 ? 'positive' : rating >= 3 ? 'neutral' : 'negative',
+      isResponded: Math.random() > 0.5,
+      response: Math.random() > 0.5 ? 'Thank you for your feedback!' : null,
+      publishedAt: daysAgo(randomInt(1, 365)),
+      respondedAt: Math.random() > 0.5 ? daysAgo(randomInt(0, 30)) : null,
+    })
+  }
+  await prisma.review.createMany({ data: reviews })
+  console.log(`   Created ${reviews.length} reviews`)
+
+  // Map Rankings
+  const mapRankings = []
+  const locations = ['New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ']
+  
+  for (let i = 0; i < 100; i++) {
+    const positions = Array.from({ length: 25 }, () => randomInt(1, 20))
+    mapRankings.push({
+      keyword: randomChoice(keywords).keyword + ' near me',
+      location: randomChoice(locations),
+      gridSize: 5,
+      positions: JSON.stringify(positions),
+      avgRank: positions.reduce((a, b) => a + b, 0) / positions.length,
+      topRank: Math.min(...positions),
+      date: daysAgo(randomInt(0, 30)),
+    })
+  }
+  await prisma.mapRanking.createMany({ data: mapRankings })
+  console.log(`   Created ${mapRankings.length} map rankings`)
+
+  // Social Toolkit
+  console.log('📱 Creating social toolkit data...')
+  const socialPlatforms = ['Twitter', 'Facebook', 'Instagram', 'LinkedIn', 'TikTok', 'YouTube']
+  const socialProfiles = []
+  
+  for (const domain of domains.slice(0, 30)) {
+    for (const platform of socialPlatforms.slice(0, randomInt(2, 5))) {
+      socialProfiles.push({
+        platform,
+        handle: `@${domain.domain.split('.')[0]}`,
+        displayName: domain.domain.split('.')[0].toUpperCase(),
+        followers: randomInt(100, 100000),
+        following: randomInt(50, 5000),
+        postCount: randomInt(10, 1000),
+        engagementRate: randomFloat(0.5, 8.0, 2),
+        profileUrl: `https://${platform.toLowerCase()}.com/${domain.domain.split('.')[0]}`,
+        avatarUrl: null,
+        isVerified: Math.random() > 0.8,
+      })
+    }
+  }
+  const createdProfiles = []
+  for (const profile of socialProfiles) {
+    try {
+      const created = await prisma.socialProfile.create({ data: profile })
+      createdProfiles.push(created)
+    } catch {
+      // Skip duplicates
+    }
+  }
+  console.log(`   Created ${createdProfiles.length} social profiles`)
+
+  // Social Posts
+  const socialPosts = []
+  const postTypes = ['text', 'image', 'video', 'link', 'carousel']
+  
+  for (const profile of createdProfiles) {
+    for (let i = 0; i < randomInt(10, 50); i++) {
+      socialPosts.push({
+        profileId: profile.id,
+        platform: profile.platform,
+        postId: `post-${profile.id}-${i}`,
+        content: `Check out our latest ${randomChoice(['product', 'service', 'offer', 'update'])}! #trending #marketing`,
+        postType: randomChoice(postTypes),
+        likes: randomInt(10, 5000),
+        comments: randomInt(0, 500),
+        shares: randomInt(0, 200),
+        impressions: randomInt(100, 50000),
+        reach: randomInt(50, 25000),
+        publishedAt: daysAgo(randomInt(0, 90)),
+        url: `https://${profile.platform.toLowerCase()}.com/post/${i}`,
+      })
+    }
+  }
+  await prisma.socialPost.createMany({ data: socialPosts })
+  console.log(`   Created ${socialPosts.length} social posts`)
+
+  // Social Metrics (30 days)
+  const socialMetrics = []
+  for (const profile of createdProfiles) {
+    let followers = profile.followers
+    for (let day = 30; day >= 0; day--) {
+      const change = randomInt(-50, 100)
+      followers = Math.max(0, followers + change)
+      socialMetrics.push({
+        profileId: profile.id,
+        date: daysAgo(day),
+        followers,
+        followersChange: change,
+        impressions: randomInt(1000, 50000),
+        engagements: randomInt(50, 2000),
+        reach: randomInt(500, 25000),
+      })
+    }
+  }
+  await prisma.socialMetric.createMany({ data: socialMetrics })
+  console.log(`   Created ${socialMetrics.length} social metrics`)
+
+  // Advertising Toolkit
+  console.log('📢 Creating advertising toolkit data...')
+  const ppcKeywords = []
+  
+  for (const kw of keywords.slice(0, 500)) {
+    ppcKeywords.push({
+      keyword: kw.keyword,
+      volume: kw.volume,
+      cpc: kw.cpc,
+      competition: randomFloat(0.1, 1.0, 2),
+      competitorAds: randomInt(0, 20),
+      trend: JSON.stringify(Array.from({ length: 12 }, () => randomInt(50, 150))),
+      lastSeen: daysAgo(randomInt(0, 7)),
+      adCopies: JSON.stringify([
+        { headline: `Best ${kw.keyword}`, description: 'Shop now and save!' },
+        { headline: `${kw.keyword} Deals`, description: 'Limited time offer.' },
+      ]),
+    })
+  }
+  await prisma.ppcKeyword.createMany({ data: ppcKeywords })
+  console.log(`   Created ${ppcKeywords.length} PPC keywords`)
+
+  // Ad Campaigns
+  const adCampaigns = []
+  const campaignTypes = ['search', 'display', 'shopping', 'video', 'app']
+  const campaignStatuses = ['active', 'paused', 'ended', 'draft']
+  
+  for (const domain of domains.slice(0, 50)) {
+    for (let i = 0; i < randomInt(1, 5); i++) {
+      adCampaigns.push({
+        domain: domain.domain,
+        platform: randomChoice(['Google Ads', 'Bing Ads', 'Facebook Ads']),
+        campaignType: randomChoice(campaignTypes),
+        budget: randomFloat(100, 10000, 2),
+        startDate: daysAgo(randomInt(30, 365)),
+        endDate: Math.random() > 0.5 ? daysAgo(randomInt(0, 30)) : null,
+        status: randomChoice(campaignStatuses),
+        impressions: randomInt(1000, 1000000),
+        clicks: randomInt(100, 50000),
+        conversions: randomInt(10, 1000),
+        spend: randomFloat(100, 5000, 2),
+      })
+    }
+  }
+  const createdCampaigns = await prisma.adCampaign.createMany({ data: adCampaigns })
+  const campaignIds = await prisma.adCampaign.findMany({ select: { id: true } })
+  console.log(`   Created ${adCampaigns.length} ad campaigns`)
+
+  // Ad Creatives
+  const adCreatives = []
+  const adFormats = ['text', 'responsive', 'image', 'video', 'carousel']
+  
+  for (const campaign of campaignIds) {
+    for (let i = 0; i < randomInt(2, 8); i++) {
+      adCreatives.push({
+        campaignId: campaign.id,
+        headline: `${randomChoice(['Save', 'Shop', 'Get', 'Try', 'Discover'])} ${randomChoice(['Now', 'Today', 'Big', 'Best', 'Top'])}!`,
+        description: 'Limited time offer. Free shipping on orders over $50.',
+        displayUrl: `example.com/${randomChoice(['sale', 'deals', 'shop', 'offer'])}`,
+        finalUrl: 'https://example.com/landing',
+        imageUrl: null,
+        format: randomChoice(adFormats),
+        impressions: randomInt(100, 100000),
+        clicks: randomInt(10, 5000),
+        ctr: randomFloat(0.5, 5.0, 2),
+        firstSeen: daysAgo(randomInt(30, 365)),
+        lastSeen: daysAgo(randomInt(0, 30)),
+      })
+    }
+  }
+  await prisma.adCreative.createMany({ data: adCreatives })
+  console.log(`   Created ${adCreatives.length} ad creatives`)
+
+  // Traffic & Market Data
+  console.log('📊 Creating traffic & market data...')
+  const trafficData = []
+  
+  for (const domain of domains.slice(0, 100)) {
+    for (let day = 30; day >= 0; day--) {
+      trafficData.push({
+        domain: domain.domain,
+        date: daysAgo(day),
+        visits: randomInt(100, 50000),
+        pageViews: randomInt(200, 150000),
+        bounceRate: randomFloat(20, 80, 1),
+        avgDuration: randomInt(30, 300),
+        pagesPerVisit: randomFloat(1.5, 5.0, 1),
+        directTraffic: randomFloat(10, 40, 1),
+        searchTraffic: randomFloat(30, 60, 1),
+        socialTraffic: randomFloat(5, 20, 1),
+        referralTraffic: randomFloat(5, 15, 1),
+        paidTraffic: randomFloat(0, 20, 1),
+      })
+    }
+  }
+  await prisma.trafficData.createMany({ data: trafficData })
+  console.log(`   Created ${trafficData.length} traffic data points`)
+
+  // Market Data
+  const marketData = []
+  for (const industry of createdIndustries) {
+    const industryDomains = domains.filter(d => d.industrySlug === industry.slug).slice(0, 10)
+    for (const domain of industryDomains) {
+      for (let day = 30; day >= 0; day++) {
+        marketData.push({
+          industrySlug: industry.slug,
+          domain: domain.domain,
+          marketShare: randomFloat(1, 25, 2),
+          traffic: randomInt(1000, 500000),
+          growthRate: randomFloat(-10, 20, 1),
+          date: daysAgo(day),
+        })
+      }
+    }
+  }
+  await prisma.marketData.createMany({ data: marketData })
+  console.log(`   Created ${marketData.length} market data points`)
+
+  // AI Visibility & PR
+  console.log('🤖 Creating AI visibility data...')
+  const aiPlatforms = ['ChatGPT', 'Claude', 'Perplexity', 'Gemini', 'Copilot']
+  const aiMentions = []
+  
+  for (const domain of domains.slice(0, 50)) {
+    for (const platform of aiPlatforms) {
+      for (let i = 0; i < randomInt(3, 10); i++) {
+        const mentioned = Math.random() > 0.4
+        aiMentions.push({
+          brand: domain.domain.split('.')[0],
+          aiPlatform: platform,
+          query: `Best ${randomChoice(keywords).keyword}`,
+          mentioned,
+          position: mentioned ? randomInt(1, 10) : null,
+          sentiment: randomChoice(['positive', 'neutral', 'negative']),
+          context: mentioned ? `${domain.domain} is mentioned as a leading provider...` : null,
+          competitors: JSON.stringify(domains.slice(0, 5).map(d => d.domain)),
+          checkedAt: daysAgo(randomInt(0, 7)),
+        })
+      }
+    }
+  }
+  await prisma.aIMention.createMany({ data: aiMentions })
+  console.log(`   Created ${aiMentions.length} AI mentions`)
+
+  // AI PR Campaigns
+  const aiPrCampaigns = []
+  const prStatuses = ['draft', 'active', 'paused', 'completed']
+  
+  for (const domain of domains.slice(0, 30)) {
+    aiPrCampaigns.push({
+      name: `${domain.domain.split('.')[0]} Brand Awareness`,
+      brand: domain.domain.split('.')[0],
+      status: randomChoice(prStatuses),
+      targetAudience: JSON.stringify(['Tech enthusiasts', 'Business professionals', 'Early adopters']),
+      keyMessages: JSON.stringify(['Innovation', 'Quality', 'Trust']),
+      mediaOutlets: JSON.stringify(['TechCrunch', 'Forbes', 'Business Insider']),
+      pitchTemplate: 'Dear [Editor], We are excited to share our latest...',
+      sentCount: randomInt(0, 100),
+      openCount: randomInt(0, 50),
+      replyCount: randomInt(0, 20),
+      placementCount: randomInt(0, 5),
+    })
+  }
+  await prisma.aIPrCampaign.createMany({ data: aiPrCampaigns })
+  console.log(`   Created ${aiPrCampaigns.length} AI PR campaigns`)
 
   console.log('\n✅ Seed complete!')
   console.log('Summary:')
